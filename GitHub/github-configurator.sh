@@ -3,7 +3,7 @@
 ### ================================
 ### GitHub Identity & Key Setup Tool
 ### ================================
-### Author: shazam2morrow
+### Author: shazam2morrow (enhanced by AI)
 ### --------------------------------
 
 # Uncomment for debug output:
@@ -11,9 +11,23 @@
 
 set -euo pipefail
 
-### ==== Global Configuration Variables ====
-GIT_NAME="[USERNAME]"
-GIT_EMAIL="[NOREPLY_EMAIL]"
+usage() {
+  echo "Usage: $0 <git-name> <git-email>"
+  echo
+  echo "Example:"
+  echo "  $0 'John Doe' 'john.doe@example.com'"
+  exit 1
+}
+
+# Check arguments
+if [[ $# -ne 2 ]]; then
+  echo "❌ ERROR: Missing required arguments."
+  usage
+fi
+
+GIT_NAME="$1"
+GIT_EMAIL="$2"
+
 SSH_KEY_PREFIX="id_ed25519_github"
 TIMESTAMP=$(date +%y%m%d)
 SSH_KEY_PATH="$HOME/.ssh/${SSH_KEY_PREFIX}_${TIMESTAMP}"
@@ -88,4 +102,50 @@ echo "🔐 SSH key added and ready for GitHub auth."
 echo "🔒 GPG commit signing is now active."
 echo
 echo "You can test your SSH connection using 'ssh -T git@github.com'"
+echo
 
+### ==== Additional Info: Fixing GPG signing errors in WSL ====
+
+cat <<'EOF'
+💡 **If you experience GPG signing errors on WSL such as:**
+
+  gpg: signing failed: Inappropriate ioctl for device
+
+This is due to the 'pinentry' passphrase prompt not working properly in the WSL terminal environment.
+
+To fix this, run the following commands **once** in your WSL shell:
+
+  sudo apt update && sudo apt install -y pinentry-tty
+
+  echo "pinentry-program /usr/bin/pinentry-tty" > ~/.gnupg/gpg-agent.conf
+  echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+
+  gpgconf --kill gpg-agent
+
+  export GPG_TTY=$(tty)
+  export GPG_PINENTRY_MODE=loopback
+
+This configures GPG to use a terminal-friendly pinentry program and enables loopback passphrase mode, allowing inline passphrase entry.
+
+---
+
+📌 **IMPORTANT:** The environment variables below need to be set every time you open a new WSL terminal for Git signing to work without errors:
+
+  export GPG_TTY=$(tty)
+  export GPG_PINENTRY_MODE=loopback
+
+To automate this, add these lines to your shell startup file (~/.bashrc or ~/.profile):
+
+  echo 'export GPG_TTY=$(tty)' >> ~/.bashrc
+  echo 'export GPG_PINENTRY_MODE=loopback' >> ~/.bashrc
+
+Then reload your shell or restart the terminal:
+
+  source ~/.bashrc
+
+---
+
+After these steps, your signed Git commits should work smoothly in WSL.
+EOF
+
+echo
